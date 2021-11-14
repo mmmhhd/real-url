@@ -4,24 +4,61 @@
 
 import asyncio
 import danmaku
+from datetime import datetime
+from time import sleep
+
+records = []
 
 
-async def printer(q):
+async def recorder(q):
+    global records
     while True:
-        m = await q.get()
-        if m['msg_type'] == 'danmaku':
-            print(f'{m["name"]}：{m["content"]}')
+        if len(records) < 10:
+            m = await q.get()
+            if m['msg_type'] == 'danmaku':
+                cur_time = datetime.now()
+                print(str(cur_time.strftime("%Y-%m-%d %H:%M:%S")) + " " + f'{m["name"]}：{m["content"]}')
+                records.append(cur_time.strftime("%Y-%m-%d %H:%M:%S") + " " + f'{m["name"]}：{m["content"]}')
+        else:
+            await save_records()
+
+
+async def save_records():
+    record_path = "D:\\PycharmProjects\\real-url\\danmu\\records\\"
+    global records
+    with open(record_path + gen_record_filename(), "a", encoding="UTF-8") as f:
+        f.write("\n".join(records) + "\n")
+    print("##### RECORDS SAVED #####")
+    records = []
 
 
 async def main(url):
     q = asyncio.Queue()
     dmc = danmaku.DanmakuClient(url, q)
-    asyncio.create_task(printer(q))
+    asyncio.create_task(recorder(q))
     await dmc.start()
 
 
-a = input('请输入直播间地址：\n')
-asyncio.run(main(a))
+def gen_record_filename():
+    return str(datetime.now().strftime("%Y_%m_%d_%H")) + "_00_00.txt"
+
+
+if __name__ == '__main__':
+    streaming_flag = True
+    # room_url = input('请输入直播间地址：\n')
+    # room_url = "https://www.huya.com/16844387"
+    # room_url = "https://www.huya.com/sgjsheng"
+    room_url = "https://www.huya.com/100"
+
+    print("直播间地址：" + room_url)
+    while True:
+        try:
+            asyncio.run(main(room_url))
+        except AttributeError:
+            if streaming_flag:
+                print(datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " 未开播")
+            streaming_flag = False
+            sleep(3)
 
 # 虎牙直播：https://www.huya.com/11352915
 # 斗鱼直播：https://www.douyu.com/85894
